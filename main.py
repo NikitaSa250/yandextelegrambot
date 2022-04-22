@@ -1,13 +1,53 @@
+import random, requests
 import telebot, wikipedia, re
-import random
 from telebot import types
-#from langdetect import detect
-
-
+import os
+from fuzzywuzzy import fuzz
 
 bot = telebot.TeleBot('5363919453:AAFca8tyFEAvzbHPOztYcDRZ06eRnjsU7Oo')
-
 wikipedia.set_lang("ru")
+
+
+
+# Загружаем список фраз и ответов в массив
+mas = []
+if os.path.exists('data/boltun.txt'):
+    f = open('data/boltun.txt', 'r', encoding='UTF-8')
+    for x in f:
+        if len(x.strip()) > 2:
+            mas.append(x.strip().lower())
+    f.close()
+# С помощью fuzzywuzzy вычисляем наиболее похожую фразу и выдаем в качестве ответа следующий элемент списка
+def answer(text):
+    try:
+        text = text.lower().strip()
+        if os.path.exists('data/boltun.txt'):
+            a = 0
+            n = 0
+            nn = 0
+            for q in mas:
+                if('u: ' in q):
+                    # С помощью fuzzywuzzy получаем, насколько похожи две строки
+                    aa = (fuzz.token_sort_ratio(q.replace('u: ',''), text))
+                    if(aa > a and aa!= a):
+                        a = aa
+                        nn = n
+                n = n + 1
+            s = mas[nn + 1]
+            return s
+        else:
+            return 'Ошибка'
+    except:
+        return 'Ошибка'
+
+
+
+
+def get_a_joke():
+    f = open('jokes.txt', 'r', encoding='UTF-8')
+    jokes = f.read().split('<>')
+    f.close()
+    return random.choice(jokes)
 
 
 def getwiki(s):
@@ -33,32 +73,40 @@ def getwiki(s):
     except Exception as e:
         return 'В энциклопедии нет информации об этом'
 
+
 @bot.message_handler(commands=["start"])
 def start(m, res=False):
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        item1 = types.KeyboardButton("Поиск в википедии")
-        item2 = types.KeyboardButton("Анекдоты")
-        markup.add(item1)
-        markup.add(item2)
-        bot.send_message(m.chat.id, 'Отправьте мне любое слово, и я найду его значение на Wikipedia')
+    bot.send_message(m.from_user.id, "Привет, друг!")
+    keyboard = types.InlineKeyboardMarkup()
 
-#@bot.message_handler(content_types=["text"])
-#def handle_text(message):
-  #  if message.text.strip() == 'Факт':
-   # bot.send_message(message.chat.id, getwiki(message.text))
+    key_wikipedia = types.InlineKeyboardButton(text='Поиск по Wikipedia', callback_data='wikisearch')
+    keyboard.add(key_wikipedia)
+    key_jokes = types.InlineKeyboardButton(text='Анекдоты', callback_data='jokes')
+    keyboard.add(key_jokes)
+    key_talking = types.InlineKeyboardButton(text='Пообщаемся?', callback_data='chatbot')
+    keyboard.add(key_talking)
+    bot.send_message(m.from_user.id, text='Выберите нужную вам функцию', reply_markup=keyboard)
+        #bot.send_message(m.chat.id, 'Отправьте мне любое слово, и я найду его значение на Wikipedia')
 
 
-
-@bot.message_handler(content_types=["text"])
-def handle_text(message):
-    if message.text.strip() == 'Анекдоты' :
-            answer = "he-he"
-            bot.send_message(message.chat.id, answer)
-    elif message.text.strip() == 'Поиск в википедии':
-            bot.send_message(message.chat.id, 'Отправьте мне любое слово, и я найду его значение на Wikipedia')
+@bot.message_handler(content_types=['text'])
+def get_text_messages(message):
+    if message.text == "/help":
+        bot.send_message(message.from_user.id, "Напиши /start")
+    elif message.text == "Поиск по Wikipedia" or message.text == 'поиск по википедии' \
+         or message.text == 'найти на википедии' or  message.text == 'поиск по Wikipedia':
+        bot.send_message(message.from_user.id, 'Отправьте мне любое слово, я найду его значение на Wikipedia')
+    elif message.text == "Анекдоты" or message.text == "анекдоты":
+        bot.send_message(message.from_user.id, get_a_joke())
     else:
-        bot.send_message(message.chat.id, getwiki(message.text))
-    #bot.send_message(message.chat.id, answer)
+        bot.send_message(message.from_user.id, getwiki(message.text))
 
 
+@bot.callback_query_handler(func=lambda call: True)
+def callback_worker(call):
+    if call.data == "wikisearch":
+        bot.send_message(call.from_user.id, 'Отправьте мне любое слово, я найду его значение на Wikipedia')
+    elif call.data == "jokes":
+        bot.send_message(call.from_user.id, get_a_joke())
 bot.polling(none_stop=True, interval=0)
+
