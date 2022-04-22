@@ -9,25 +9,24 @@ wikipedia.set_lang("ru")
 
 
 
-# Загружаем список фраз и ответов в массив
 mas = []
-if os.path.exists('data/boltun.txt'):
-    f = open('data/boltun.txt', 'r', encoding='UTF-8')
+if os.path.exists('talking.txt'):
+    f = open('talking.txt', 'r', encoding='UTF-8')
     for x in f:
         if len(x.strip()) > 2:
             mas.append(x.strip().lower())
     f.close()
-# С помощью fuzzywuzzy вычисляем наиболее похожую фразу и выдаем в качестве ответа следующий элемент списка
+
+
 def answer(text):
     try:
         text = text.lower().strip()
-        if os.path.exists('data/boltun.txt'):
+        if os.path.exists('talking.txt'):
             a = 0
             n = 0
             nn = 0
             for q in mas:
                 if('u: ' in q):
-                    # С помощью fuzzywuzzy получаем, насколько похожи две строки
                     aa = (fuzz.token_sort_ratio(q.replace('u: ',''), text))
                     if(aa > a and aa!= a):
                         a = aa
@@ -39,8 +38,6 @@ def answer(text):
             return 'Ошибка'
     except:
         return 'Ошибка'
-
-
 
 
 def get_a_joke():
@@ -64,9 +61,9 @@ def getwiki(s):
             else:
                 break
 
-        wikitext2=re.sub('\([^()]*\)', '', wikitext2)
-        wikitext2=re.sub('\([^()]*\)', '', wikitext2)
-        wikitext2=re.sub('\{[^\{\}]*\}', '', wikitext2)
+        wikitext2 = re.sub('\([^()]*\)', '', wikitext2)
+        wikitext2 = re.sub('\([^()]*\)', '', wikitext2)
+        wikitext2 = re.sub('\{[^\{\}]*\}', '', wikitext2)
 
         return wikitext2
 
@@ -86,20 +83,41 @@ def start(m, res=False):
     key_talking = types.InlineKeyboardButton(text='Пообщаемся?', callback_data='chatbot')
     keyboard.add(key_talking)
     bot.send_message(m.from_user.id, text='Выберите нужную вам функцию', reply_markup=keyboard)
-        #bot.send_message(m.chat.id, 'Отправьте мне любое слово, и я найду его значение на Wikipedia')
+        #bot.send_message(m.chat.id, 'Отправьте мне любое слово, я найду его значение на Wikipedia')
 
 
 @bot.message_handler(content_types=['text'])
 def get_text_messages(message):
-    if message.text == "/help":
-        bot.send_message(message.from_user.id, "Напиши /start")
-    elif message.text == "Поиск по Wikipedia" or message.text == 'поиск по википедии' \
-         or message.text == 'найти на википедии' or  message.text == 'поиск по Wikipedia':
-        bot.send_message(message.from_user.id, 'Отправьте мне любое слово, я найду его значение на Wikipedia')
-    elif message.text == "Анекдоты" or message.text == "анекдоты":
-        bot.send_message(message.from_user.id, get_a_joke())
+    previous_message = ''
+    if message.text == "Пообщаемся?":
+        previous_message = message.text
+    if previous_message == "Пообщаемся?":
+        f = open(str(message.chat.id) + '_log.txt', 'a', encoding='UTF-8')
+        s = answer(message.text)
+        f.write('u: ' + message.text + '\n' + s + '\n')
+        f.close()
+        bot.send_message(message.chat.id, s)
     else:
-        bot.send_message(message.from_user.id, getwiki(message.text))
+        if message.text == "/help":
+            bot.send_message(message.from_user.id, "Напиши /start")
+        elif message.text == "Поиск по Wikipedia" or message.text == 'поиск по википедии' \
+                or message.text == 'найти на википедии' or message.text == 'поиск по Wikipedia':
+            bot.send_message(message.from_user.id, 'Отправьте мне любое слово, я найду его значение на Wikipedia')
+        elif message.text == "Анекдоты" or message.text == "анекдоты" or message.text == "анекдот" \
+                or message.text == "Анекдоты":
+            bot.send_message(message.from_user.id, get_a_joke())
+        else:
+            bot.send_message(message.from_user.id, getwiki(message.text))
+
+
+#@bot.message_handler(content_types=["Пообщаемся?"])
+#def handle_text(message):
+ #   bot.send_message(message.from_user.id, 'Приветик. поболтаем?)')
+   # f = open(str(message.chat.id) + '_log.txt', 'a', encoding='UTF-8')
+   # s = answer(message.text)
+   # f.write('u: ' + message.text + '\n' + s +'\n')
+   # f.close()
+   # bot.send_message(message.chat.id, s)
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -108,5 +126,7 @@ def callback_worker(call):
         bot.send_message(call.from_user.id, 'Отправьте мне любое слово, я найду его значение на Wikipedia')
     elif call.data == "jokes":
         bot.send_message(call.from_user.id, get_a_joke())
+    elif call.data == "chatbot":
+        bot.send_message(call.from_user.id, 'Приветик. поболтаем?)')
 bot.polling(none_stop=True, interval=0)
 
